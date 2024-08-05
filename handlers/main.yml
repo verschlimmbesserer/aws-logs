@@ -1,0 +1,12 @@
+---
+# handlers file for aws-logs
+- name: Restart awslogs
+  ansible.builtin.systemd_service:
+    name: awslogs
+    state: restarted
+  when: application|changed or main|changed
+
+- name: Enable awslogs
+  ansible.builtin.systemd_service:
+    name: awslogs
+    enabled: "{{ awslogs_enabled }}"

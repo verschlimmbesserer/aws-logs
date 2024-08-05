@@ -1,0 +1,49 @@
+---
+# tasks file for aws-logs
+
+- name: Ensure awslogs-agent setup script is installed
+  ansible.builtin.get_url:
+    url: "{{ aws_logs_python_agent_url }}"
+    dest: /var/tmp/awslogs-agent-setup.py
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure main config is installed
+  ansible.builtin.template:
+    src: awslogs.conf.j2
+    dest: /var/tmp/awslogs.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: main
+
+- name: Ensure agent is installed
+  ansible.builtin.command: python /var/tmp/awslogs-agent-setup.py --region {{ aws_logs_region }} --non-interactive --configfile /var/tmp/awslogs.conf
+  register: install_agent
+  changed_when: install_agent.rc != 0
+
+- name: Ensure application config is installed
+  ansible.builtin.template:
+    src: "{{ item }}.conf.j2"
+    dest: "/var/awslogs/etc/config/{{ item }}.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  register: application
+  with_items: "{{ aws_logs_application }}"
+  when: aws_logs_application is defined
+  notify:
+    - Restart awslogs
+    - Enable awslogs
+
+- name: Ensure config is installed
+  ansible.builtin.template:
+    src: aws.conf.j2
+    dest: /var/awslogs/etc/aws.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: aws_logs_key is defined
+  notify:
+    - Enable awslogs
